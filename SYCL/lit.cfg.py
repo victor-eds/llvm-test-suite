@@ -376,11 +376,11 @@ config.substitutions.append( ('%ACC_RUN_PLACEHOLDER',  acc_run_substitute) )
 config.substitutions.append( ('%ACC_CHECK_PLACEHOLDER',  acc_check_substitute) )
 
 if config.sycl_be == 'ext_oneapi_cuda' or (config.sycl_be == 'ext_oneapi_hip' and config.hip_platform == 'NVIDIA'):
-    config.substitutions.append( ('%sycl_triple',  "nvptx64-nvidia-cuda" ) )
+    config.substitutions.append( ('%sycl_triple',  "nvptx64-nvidia-cuda-syclmlir" ) )
 elif config.sycl_be == 'ext_oneapi_hip' and config.hip_platform == 'AMD':
-    config.substitutions.append( ('%sycl_triple',  "amdgcn-amd-amdhsa" ) )
+    config.substitutions.append( ('%sycl_triple',  "amdgcn-amd-amdhsa-syclmlir" ) )
 else:
-    config.substitutions.append( ('%sycl_triple',  "spir64" ) )
+    config.substitutions.append( ('%sycl_triple',  "spir64-unknown-unknown-syclmlir" ) )
 
 if find_executable('sycl-ls'):
     config.available_features.add('sycl-ls')
