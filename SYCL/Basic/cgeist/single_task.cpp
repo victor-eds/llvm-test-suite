@@ -8,7 +8,7 @@
 #include <sycl/sycl.hpp>
 using namespace sycl;
 
-void host_single_task(std::array<int, 1> &A) {
+void single_task(std::array<int, 1> &A) {
   auto q = queue{};
   device d = q.get_device();
   std::cout << "Using " << d.get_info<info::device::name>() << "\n";
@@ -26,7 +26,7 @@ void host_single_task(std::array<int, 1> &A) {
 
 int main() {
   std::array<int, 1> A = {0};
-  host_single_task(A);
+  single_task(A);
   assert(A[0] == 1);
   std::cout << "Test passed" << std::endl;
 }

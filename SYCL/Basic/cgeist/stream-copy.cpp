@@ -7,20 +7,23 @@
 
 #include <sycl/sycl.hpp>
 using namespace sycl;
-static constexpr unsigned N = 8;
+static constexpr unsigned N = 16;
 
-void parallel_for(std::array<int, N> &A) {
+template <typename T>
+void stream_copy(std::array<T, N> &A, std::array<T, N> &B) {
   auto q = queue{};
   device d = q.get_device();
   std::cout << "Using " << d.get_info<info::device::name>() << "\n";
   auto range = sycl::range<1>{N};
 
   {
-    auto buf = buffer<int, 1>{A.data(), range};
+    auto bufA = buffer<T, 1>{A.data(), range};
+    auto bufB = buffer<T, 1>{B.data(), range};
     q.submit([&](handler &cgh) {
-      auto A = buf.get_access<access::mode::write>(cgh);
-      cgh.parallel_for<class kernel_parallel_for>(range, [=](sycl::id<1> id) {
-        A[id] = id;
+      auto A = bufA.template get_access<access::mode::write>(cgh);
+      auto B = bufB.template get_access<access::mode::read>(cgh);
+      cgh.parallel_for<class kernel_stream_copy>(range, [=](sycl::id<1> id) {
+        A[id] = B[id];
       });
     });
   }
@@ -28,7 +31,11 @@ void parallel_for(std::array<int, N> &A) {
 
 int main() {
   std::array<int, N> A{0};
-  parallel_for(A);
+  std::array<int, N> B{0};
+  for (unsigned i = 0; i < N; ++i) {
+    B[i] = i;
+  }
+  stream_copy(A, B);
   for (unsigned i = 0; i < N; ++i) {
     assert(A[i] == i);
   }
