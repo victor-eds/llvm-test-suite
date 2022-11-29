@@ -1,7 +1,23 @@
-// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple %s -o %t.out
-// RUN: %CPU_RUN_PLACEHOLDER %t.out
-// RUN: %GPU_RUN_PLACEHOLDER %t.out
-// RUN: %ACC_RUN_PLACEHOLDER %t.out
+// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple -O0 -w %s -o %t.O0.out
+// RUN: %CPU_RUN_PLACEHOLDER %t.O0.out
+// RUN: %GPU_RUN_PLACEHOLDER %t.O0.out
+// RUN: %ACC_RUN_PLACEHOLDER %t.O0.out
+// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple -O1 -w %s -o %t.O1.out
+// RUN: %CPU_RUN_PLACEHOLDER %t.O1.out
+// RUN: %GPU_RUN_PLACEHOLDER %t.O1.out
+// RUN: %ACC_RUN_PLACEHOLDER %t.O1.out
+// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple -O2 -w %s -o %t.O2.out
+// RUN: %CPU_RUN_PLACEHOLDER %t.O2.out
+// RUN: %GPU_RUN_PLACEHOLDER %t.O2.out
+// RUN: %ACC_RUN_PLACEHOLDER %t.O2.out
+// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple -O3 -w %s -o %t.O3.out
+// RUN: %CPU_RUN_PLACEHOLDER %t.O3.out
+// RUN: %GPU_RUN_PLACEHOLDER %t.O3.out
+// RUN: %ACC_RUN_PLACEHOLDER %t.O3.out
+// RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple -Ofast -w %s -o %t.Ofast.out
+// RUN: %CPU_RUN_PLACEHOLDER %t.Ofast.out
+// RUN: %GPU_RUN_PLACEHOLDER %t.Ofast.out
+// RUN: %ACC_RUN_PLACEHOLDER %t.Ofast.out
 // REQUIRES: linux
 // UNSUPPORTED: hip || cuda
 
