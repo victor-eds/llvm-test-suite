@@ -1,4 +1,4 @@
-* @pvchupin
+* @bader
 
 # Use runtime team as the umbrella for most of the tests
 /SYCL/ @intel/llvm-reviewers-runtime
