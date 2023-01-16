@@ -71,33 +71,30 @@ void matrix_sum_rows(queue q, big_matrix<T, M, K> &A, nd_range<2> &r) {
 
            size_t
                global_index; // Index into the result array that holds the sums.
+           
+           // clang-format off
+           /* x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              <---------------------------------  SG1 --------------------------------->
 
-           /* x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x
-              x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x x x x
-              x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x
-              x    x x x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x
-              x  x x x x    x x x x  x x x x x x x x  x x x x    x x x x  x x x
-              x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x    x x x
-              x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x
-              x x x x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x
-              x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              <---------------------------------  SG1
-              --------------------------------->
-
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x
-              x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x x x x
-              x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x
-              x    x x x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x
-              x  x x x x    x x x x  x x x x x x x x  x x x x    x x x x  x x x
-              x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x    x x x
-              x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x
-              x x x x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x
-              x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
               <0> <1>  <2> <3>    <4> <5>  <6> <7>  ..... WORK ITEMS
 
-              Each work item has 16 elements <8 rows and 2 cols of the original
-              matrix> the data_slice in holds the matrix elements in the
-              following order:
+              Each work item has 16 elements <8 rows and 2 cols of the original matrix>
+              the data_slice in holds the matrix elements in the following order:
 
               0 0  0 0
                 /
@@ -107,11 +104,12 @@ void matrix_sum_rows(queue q, big_matrix<T, M, K> &A, nd_range<2> &r) {
                /
               2 2  2 2
                 /
-               /
-              3 3  3 3
-
+               / 
+              3 3  3 3 
+              
               W0 --> 0 0 1 1 2 2 3 3 .... 7 7
-            */
+            */ 
+            // clang-format on
 
            //  each WI calculates local sum of rows
            // TM =8, TK = 32
