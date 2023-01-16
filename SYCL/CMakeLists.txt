@@ -32,8 +32,10 @@ if(CHECK_SYCL_ALL)
       set(SYCL_PYTHON python3)
     endif()
 
+    file(STRINGS "xfail_tests.txt" XFAIL_TESTS_LIST)
+    string(REPLACE ";" "\;" XFAIL_TESTS "${XFAIL_TESTS_LIST}")
     add_custom_target(${TARGET}
-      COMMAND ${SYCL_PYTHON} ${TEST_SUITE_LIT} ${TEST_SUITE_LIT_FLAGS} --filter=Basic/cgeist/* --param sycl_be=${TARGET_BE} --param target_devices=${TARGET_DEVICES} .
+      COMMAND ${SYCL_PYTHON} ${TEST_SUITE_LIT} ${TEST_SUITE_LIT_FLAGS} --filter=Basic/* --xfail '${XFAIL_TESTS}' --param sycl_be=${TARGET_BE} --param target_devices=${TARGET_DEVICES} .
       COMMENT "Running the SYCL tests for ${TARGET} backend"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
       DEPENDS ${TEST_SUITE_TARGETS}
