@@ -69,30 +69,35 @@ void matrix_sum_rows(queue q, big_matrix<T, M, K> &A, nd_range<2> &r) {
            // sub_a has 8x32 elements, 16 elements per WI, 2 per WI per row
            auto data = sub_a.get_wi_data();
 
-           size_t global_index; // Index into the result array that holds the sums.
+           size_t
+               global_index; // Index into the result array that holds the sums.
 
-           /* x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              <---------------------------------  SG1 --------------------------------->
+           /* x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x
+              x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x x x x
+              x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x
+              x    x x x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x
+              x  x x x x    x x x x  x x x x x x x x  x x x x    x x x x  x x x
+              x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x    x x x
+              x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x
+              x x x x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x
+              x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              <---------------------------------  SG1
+              --------------------------------->
 
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
-              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
+              x x x x  x x x x    x x x x  x x x x  x x x x  x x x x    x x x x
+              x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x x x x
+              x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x x  x x x
+              x    x x x x  x x x x x x x x  x x x x    x x x x  x x x x  x x x
+              x  x x x x    x x x x  x x x x x x x x  x x x x    x x x x  x x x
+              x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x    x x x
+              x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x x x x
+              x x x x  x x x x  x x x x  x x x x    x x x x  x x x x x x x x  x
+              x x x    x x x x  x x x x  x x x x  x x x x    x x x x  x x x x
               <0> <1>  <2> <3>    <4> <5>  <6> <7>  ..... WORK ITEMS
 
-              Each work item has 16 elements <8 rows and 2 cols of the original matrix>
-              the data_slice in holds the matrix elements in the following order:
+              Each work item has 16 elements <8 rows and 2 cols of the original
+              matrix> the data_slice in holds the matrix elements in the
+              following order:
 
               0 0  0 0
                 /
@@ -102,23 +107,25 @@ void matrix_sum_rows(queue q, big_matrix<T, M, K> &A, nd_range<2> &r) {
                /
               2 2  2 2
                 /
-               / 
-              3 3  3 3 
-              
+               /
+              3 3  3 3
+
               W0 --> 0 0 1 1 2 2 3 3 .... 7 7
             */
 
-          //  each WI calculates local sum of rows
-          // TM =8, TK = 32
-           for (int row = 0; row < TM * (TK/(SG_SZ*2)); row++) { // there are 8 rows
-             for (int i = 0; i < data.length() / (SG_SZ/2); i++) { // 2 per row
+           //  each WI calculates local sum of rows
+           // TM =8, TK = 32
+           for (int row = 0; row < TM * (TK / (SG_SZ * 2));
+                row++) { // there are 8 rows
+             for (int i = 0; i < data.length() / (SG_SZ / 2);
+                  i++) { // 2 per row
                // i*SG_SIZE index is found based on the round robin
-               // distribution we are using in the implementation 
+               // distribution we are using in the implementation
                global_index = row + global_idx * TM;
                const auto data_index = row * 2 + i;
                sum_local_rows[global_index] += data[data_index];
-               /* WI_global0 --> row 0 --> i [0,1] data [0, 1] --> local 0 global 0
-                          row 1 --> i [0,1] data [2, 3] --> local 1  global 1
+               /* WI_global0 --> row 0 --> i [0,1] data [0, 1] --> local 0
+                  global 0 row 1 --> i [0,1] data [2, 3] --> local 1  global 1
                           row 2 --> data [4, 5] --> local 2 global 2
                           ..
                           row 7 --> data [14, 15] --> local 7 global 7
@@ -128,17 +135,15 @@ void matrix_sum_rows(queue q, big_matrix<T, M, K> &A, nd_range<2> &r) {
                           row 2 --> data [4, 5] --> local 10 global 10
                           ..
                           row 7 --> data [14, 15] --> local 15 global 15
-                  
+
                */
              }
              sum_local_rows[global_index] = reduce_over_group(
-                 sg, sum_local_rows[global_index],
-                 sycl::plus<>());
+                 sg, sum_local_rows[global_index], sycl::plus<>());
 
              // only Groups leader perform the global reduction
              if (global_idy % SG_SZ == 0) {
-               atomic_fetch_add(v[global_index],
-                                sum_local_rows[global_index]);
+               atomic_fetch_add(v[global_index], sum_local_rows[global_index]);
              }
            }
          }); // parallel for

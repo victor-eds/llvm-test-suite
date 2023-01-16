@@ -63,30 +63,32 @@ void matrix_sum_cols(queue q, big_matrix<T, M, N> &B, nd_range<2> &r) {
                              accB.get_pointer() + (global_idx * (TK / 4) * N) +
                                  sg_starty / SG_SZ * TN * 4,
                              N, matrix_layout::packed_b);
-           
+
            /* <    ---------------    128    ---------------------------------->
-                  x x x x x x x x x x x x x x x x       ..........    x x x x x x   ^
-                  x x x x x x x x x x x x x x x x       ..........    x x x x x x  16
-                  x x x x x x x x x x x x x x x x       ..........    x x x x x x   |
-                  .....                                                             |
-                  x x x x x x x x x x x x x x x x       ..........    x x x x x x   |
-                  x x x x x x x x x x x x x x x x       ..........    x x x x x x   v
-          
-                   
+                  x x x x x x x x x x x x x x x x       ..........    x x x x x
+              x   ^ x x x x x x x x x x x x x x x x       ..........    x x x x
+              x x  16 x x x x x x x x x x x x x x x x       ..........    x x x
+              x x x   |
+                  ..... | x x x x x x x x x x x x x x x x       ..........    x
+              x x x x x   | x x x x x x x x x x x x x x x x       .......... x x
+              x x x x   v
+
+
                     ---------------    64    ---------------->
                   x x x x   x x    ..........    x x  x x x x   ^
                   x x x x   x x    ..........    x x  x x x x   8
-                  x x x x   x x    ..........    x x  x x x x   |       <-- part of (VNNI-ed) original matrix
-                  .....                                         |           each SG holds
-                  x x x x   x x    ..........    x x  x x x x   |
-                  x x x x   x x    ..........    x x  x x x x   v
-                  < WI0 >                            < WI15 >
+                  x x x x   x x    ..........    x x  x x x x   |       <-- part
+              of (VNNI-ed) original matrix
+                  .....                                         |           each
+              SG holds x x x x   x x    ..........    x x  x x x x   | x x x x
+              x x    ..........    x x  x x x x   v < WI0 > < WI15 >
 
 
                   <--------    16    ------------->
                   x x x     ..........    x x x   ^
                   x x x     ..........    x x x   |
-                  x x x     ..........    x x x   |       <-- part of (non-VNNI-ed) original matrix
+                  x x x     ..........    x x x   |       <-- part of
+              (non-VNNI-ed) original matrix
                   .....                           |           each SG holds
                   x x x     ..........    x x x   |
                   x x x     ..........    x x x   |
@@ -100,98 +102,110 @@ void matrix_sum_cols(queue q, big_matrix<T, M, N> &B, nd_range<2> &r) {
 
                   If we dividie the above matrix across 16 (SG_SZ) work items,
                   each WI will hold 32 elements.  And these 32 elements will be
-                  8x4 chunks as shown in the VNNI-ed matrix figure. 
+                  8x4 chunks as shown in the VNNI-ed matrix figure.
           */
-           
+
            int32_t sum_local_cols[N] = {0}; // 4 local cols, N total
            // sub_b has 32x16 elements, 32 elements per WI, 4 per WI per row
            auto data = sub_b.get_wi_data();
 
-           size_t global_index; // Index into the result array that holds the sums.
+           size_t
+               global_index; // Index into the result array that holds the sums.
 
            // each WI calculates local sum of cols
            // TK = 32
-          for (int col = 0; col < data.length() / (TK / 4); col++)  { // there are 4 cols
-            for (int i = 0; i < TK / 4; i++)  { // 8 rows per col
+           for (int col = 0; col < data.length() / (TK / 4);
+                col++) {                        // there are 4 cols
+             for (int i = 0; i < TK / 4; i++) { // 8 rows per col
                // Index is found based on the round robin
                // distribution we are using in the implementation
-               // In the below representation, we have WI_n_global[global_idx,global_idy]
-               /*WI0_global[0, 0] --> col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 0 global 0
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 1  global 1
-                                      col 2 --> data [2,6,10,...,30] --> local 2 global 2
-                                      col 3 --> data [3,7,11,..,31] --> local 3 global 3
-                
-                WI1_global[0, 1] --> col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 4 global 4
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 5  global 5
-                                      col 2 --> data [2,6,10,...,30] --> local 6 global 6
-                                      col 3 --> data [3,7,11,..,31] --> local 7 global 7
+               // In the below representation, we have
+               // WI_n_global[global_idx,global_idy]
+               /*WI0_global[0, 0] --> col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 0 global 0 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 1  global 1 col 2 --> data
+                [2,6,10,...,30] --> local 2 global 2 col 3 --> data
+                [3,7,11,..,31] --> local 3 global 3
 
-                WI2_global[0, 2] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 8 global 8
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 9  global 9
-                                      col 2 --> data [2,6,10,...,30] --> local 10 global 10
-                                      col 3 --> data [3,7,11,..,31] --> local 11 global 11
+                WI1_global[0, 1] --> col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 4 global 4 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 5  global 5 col 2 --> data
+                [2,6,10,...,30] --> local 6 global 6 col 3 --> data
+                [3,7,11,..,31] --> local 7 global 7
+
+                WI2_global[0, 2] -->  col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 8 global 8 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 9  global 9 col 2 --> data
+                [2,6,10,...,30] --> local 10 global 10 col 3 --> data
+                [3,7,11,..,31] --> local 11 global 11
 
                 .....
 
-                WI15_global[0, 15] --> col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 60 global 60
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 61  global 61
-                                      col 2 --> data [2,6,10,...,30] --> local 62 global 62
-                                      col 3 --> data [3,7,11,..,31] --> local 63 global 63
+                WI15_global[0, 15] --> col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 60 global 60 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 61  global 61 col 2 --> data
+                [2,6,10,...,30] --> local 62 global 62 col 3 --> data
+                [3,7,11,..,31] --> local 63 global 63
 
-                
-                
-                WI0_global[0, 16] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 64 global 64
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 65  global 65
-                                      col 2 --> data [2,6,10,...,30] --> local 66 global 66
-                                      col 3 --> data [3,7,11,..,31] --> local 67 global 67
-                WI1_global[0, 17] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 68 global 68
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 69  global 69
-                                      col 2 --> data [2,6,10,...,30] --> local 70 global 70
-                                      col 3 --> data [3,7,11,..,31] --> local 71 global 71
+
+
+                WI0_global[0, 16] -->  col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 64 global 64 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 65  global 65 col 2 --> data
+                [2,6,10,...,30] --> local 66 global 66 col 3 --> data
+                [3,7,11,..,31] --> local 67 global 67 WI1_global[0, 17] -->  col
+                0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 68 global 68
+                                      col 1 --> i [0,1,....,7] data
+                [1,5,9,13...,29] --> local 69  global 69 col 2 --> data
+                [2,6,10,...,30] --> local 70 global 70 col 3 --> data
+                [3,7,11,..,31] --> local 71 global 71
                 ....
 
-                WI15_global[0, 31] --> col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 124 global 124
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 125  global 125
-                                      col 2 --> data [2,6,10,...,30] --> local 126 global 126
-                                      col 3 --> data [3,7,11,..,31] --> local 127 global 127
+                WI15_global[0, 31] --> col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 124 global 124 col 1 --> i
+                [0,1,....,7] data [1,5,9,13...,29] --> local 125  global 125 col
+                2 --> data [2,6,10,...,30] --> local 126 global 126 col 3 -->
+                data [3,7,11,..,31] --> local 127 global 127
 
 
-                WI0_global[1, 0] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 0 global 0
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 1  global 1
-                                      col 2 --> data [2,6,10,...,30] --> local 2 global 2
-                                      col 3 --> data [3,7,11,..,31] --> local 3 global 3
-                WI1_global[1, 1] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 4 global 4
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 5  global 5
-                                      col 2 --> data [2,6,10,...,30] --> local 6 global 6
-                                      col 3 --> data [3,7,11,..,31] --> local 7 global 7
+                WI0_global[1, 0] -->  col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 0 global 0 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 1  global 1 col 2 --> data
+                [2,6,10,...,30] --> local 2 global 2 col 3 --> data
+                [3,7,11,..,31] --> local 3 global 3 WI1_global[1, 1] -->  col 0
+                --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 4 global 4 col
+                1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 5  global 5
+                                      col 2 --> data [2,6,10,...,30] --> local 6
+                global 6 col 3 --> data [3,7,11,..,31] --> local 7 global 7
                 ......
-                WI15_global[1, 15] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 60 global 60
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 61  global 61
-                                      col 2 --> data [2,6,10,...,30] --> local 62 global 62
-                                      col 3 --> data [3,7,11,..,31] --> local 63 global 63
+                WI15_global[1, 15] -->  col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 60 global 60 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 61  global 61 col 2 --> data
+                [2,6,10,...,30] --> local 62 global 62 col 3 --> data
+                [3,7,11,..,31] --> local 63 global 63
 
-                WI0_global[1, 16] -->  col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 64 global 64
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 65  global 65
-                                      col 2 --> data [2,6,10,...,30] --> local 66 global 66
-                                      col 3 --> data [3,7,11,..,31] --> local 67 global 67
+                WI0_global[1, 16] -->  col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 64 global 64 col 1 --> i [0,1,....,7]
+                data [1,5,9,13...,29] --> local 65  global 65 col 2 --> data
+                [2,6,10,...,30] --> local 66 global 66 col 3 --> data
+                [3,7,11,..,31] --> local 67 global 67
                 ....
-                WI15_global[1, 31] --> col 0 --> i [0,1,.., 7] data [0,4,8,12,..,28] --> local 124 global 124
-                                      col 1 --> i [0,1,....,7] data [1,5,9,13...,29] --> local 125  global 125
-                                      col 2 --> data [2,6,10,...,30] --> local 126 global 126
-                                      col 3 --> data [3,7,11,..,31] --> local 127 global 127
+                WI15_global[1, 31] --> col 0 --> i [0,1,.., 7] data
+                [0,4,8,12,..,28] --> local 124 global 124 col 1 --> i
+                [0,1,....,7] data [1,5,9,13...,29] --> local 125  global 125 col
+                2 --> data [2,6,10,...,30] --> local 126 global 126 col 3 -->
+                data [3,7,11,..,31] --> local 127 global 127
 
                */
-              global_index = col + (global_idy * 4 /*VNNI_FACTOR*/);
-              const auto data_index = col + (i * 4 /*VNNI factor*/);
-              
-              sum_local_cols[global_index] += data[data_index];
-              
+               global_index = col + (global_idy * 4 /*VNNI_FACTOR*/);
+               const auto data_index = col + (i * 4 /*VNNI factor*/);
+
+               sum_local_cols[global_index] += data[data_index];
 
              } // Done Iterating over rows
-              // TODO: Do we need a reduce_over_group() here for supporting other
-              // row/col distributions in a different architecture? 
-               atomic_fetch_add(v[global_index],
-                                sum_local_cols[global_index]);
+               // TODO: Do we need a reduce_over_group() here for supporting
+               // other row/col distributions in a different architecture?
+             atomic_fetch_add(v[global_index], sum_local_cols[global_index]);
            } // iterating through columns
          }); // parallel for
    }).wait();
