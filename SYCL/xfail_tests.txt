@@ -37,7 +37,6 @@ Basic/offset-accessor-get_pointer.cpp
 Basic/parallel_for_disable_range_roundup.cpp
 Basic/parallel_for_range_roundup.cpp
 Basic/reqd_work_group_size.cpp
-Basic/sampler/sampler.cpp
 Basic/scalar_vec_access.cpp
 Basic/span.cpp
 Basic/stream/auto_flush.cpp
