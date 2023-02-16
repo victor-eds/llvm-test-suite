@@ -1,10 +1,13 @@
 // RUN: %clangxx -fsycl -fsycl-targets=%sycl_triple %s -o %t.out
-// RUN: %CPU_RUN_PLACEHOLDER %t.out
-// RUN: %GPU_RUN_PLACEHOLDER %t.out
+// RUN: env SYCL_RT_WARNING_LEVEL=1 %CPU_RUN_PLACEHOLDER %t.out
+// RUN: env SYCL_RT_WARNING_LEVEL=1 %GPU_RUN_PLACEHOLDER %t.out
 // UNSUPPORTED: cuda || hip
 // REQUIRES: fusion
 
 // Test pointers being stored are not internalized.
+
+// CHECK:      Unable to perform all promotions for function {{.*}}. Detailed information:
+// CHECK-NEXT: Failed to promote argument 0 of function {{.*}}: It is not safe to promote values being stored to another pointer
 
 #include <sycl/sycl.hpp>
 
